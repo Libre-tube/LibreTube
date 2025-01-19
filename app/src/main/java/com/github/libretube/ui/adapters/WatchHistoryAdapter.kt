@@ -5,7 +5,8 @@ import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.VideoRowBinding
 import com.github.libretube.db.DatabaseHolder
@@ -24,27 +25,34 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
-class WatchHistoryAdapter(
-    private val watchHistory: MutableList<WatchHistoryItem>
-) :
-    RecyclerView.Adapter<WatchHistoryViewHolder>() {
+class WatchHistoryAdapter : ListAdapter<WatchHistoryItem, WatchHistoryViewHolder>(object :
+    DiffUtil.ItemCallback<WatchHistoryItem>() {
+    override fun areItemsTheSame(oldItem: WatchHistoryItem, newItem: WatchHistoryItem): Boolean {
+        return oldItem == newItem
+    }
 
-    override fun getItemCount() = watchHistory.size
+    override fun areContentsTheSame(oldItem: WatchHistoryItem, newItem: WatchHistoryItem): Boolean {
+        return oldItem == newItem
+    }
+
+}) {
 
     fun removeFromWatchHistory(position: Int) {
-        val history = watchHistory[position]
+        val history = getItem(position)
         runBlocking(Dispatchers.IO) {
             DatabaseHolder.Database.watchHistoryDao().delete(history)
         }
-        watchHistory.removeAt(position)
-        notifyItemRemoved(position)
-        notifyItemRangeChanged(position, itemCount)
+        val updatedList = currentList.toMutableList().also {
+            it.removeAt(position)
+        }
+        submitList(updatedList)
     }
 
     fun insertItems(items: List<WatchHistoryItem>) {
-        val oldSize = itemCount
-        this.watchHistory.addAll(items)
-        notifyItemRangeInserted(oldSize, itemCount)
+        val updatedList = currentList.toMutableList().also {
+            it.addAll(items)
+        }
+        submitList(updatedList)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): WatchHistoryViewHolder {
@@ -54,7 +62,7 @@ class WatchHistoryAdapter(
     }
 
     override fun onBindViewHolder(holder: WatchHistoryViewHolder, position: Int) {
-        val video = watchHistory[position]
+        val video = getItem(holder.bindingAdapterPosition)
         holder.binding.apply {
             videoTitle.text = video.title
             channelName.text = video.uploader

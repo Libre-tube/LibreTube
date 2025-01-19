@@ -10,7 +10,6 @@ import androidx.core.text.method.LinkMovementMethodCompat
 import androidx.core.text.parseAsHtml
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.libretube.R
 import com.github.libretube.api.obj.Segment
 import com.github.libretube.api.obj.Streams
@@ -33,6 +32,8 @@ class DescriptionLayout(
     private var streams: Streams? = null
     var handleLink: (link: String) -> Unit = {}
 
+    private val videoTagsAdapter = VideoTagsAdapter()
+
     init {
         binding.playerTitleLayout.setOnClickListener {
             toggleDescription()
@@ -41,6 +42,8 @@ class DescriptionLayout(
             streams?.title?.let { ClipboardHelper.save(context, text = it) }
             true
         }
+
+        binding.tagsRecycler.adapter = videoTagsAdapter
     }
 
     fun setSegments(segments: List<Segment>) {
@@ -101,9 +104,7 @@ class DescriptionLayout(
                 "${context?.getString(R.string.visibility)}: $visibility"
 
             if (streams.tags.isNotEmpty()) {
-                binding.tagsRecycler.layoutManager =
-                    LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-                binding.tagsRecycler.adapter = VideoTagsAdapter(streams.tags)
+                videoTagsAdapter.submitList(streams.tags)
             }
             binding.tagsRecycler.isVisible = streams.tags.isNotEmpty()
 

@@ -9,7 +9,8 @@ import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.github.libretube.R
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.VideoRowBinding
@@ -37,9 +38,21 @@ import kotlin.io.path.fileSize
 class DownloadsAdapter(
     private val context: Context,
     private val downloadTab: DownloadTab,
-    private val downloads: MutableList<DownloadWithItems>,
     private val toggleDownload: (DownloadWithItems) -> Boolean
-) : RecyclerView.Adapter<DownloadsViewHolder>() {
+) : ListAdapter<DownloadWithItems, DownloadsViewHolder>(object :
+    DiffUtil.ItemCallback<DownloadWithItems>() {
+    override fun areItemsTheSame(oldItem: DownloadWithItems, newItem: DownloadWithItems): Boolean {
+        return oldItem == newItem
+    }
+
+    override fun areContentsTheSame(
+        oldItem: DownloadWithItems,
+        newItem: DownloadWithItems
+    ): Boolean {
+        return oldItem == newItem
+    }
+
+}) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DownloadsViewHolder {
         val binding = VideoRowBinding.inflate(
             LayoutInflater.from(parent.context),
@@ -51,8 +64,8 @@ class DownloadsAdapter(
 
     @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: DownloadsViewHolder, position: Int) {
-        val download = downloads[position].download
-        val items = downloads[position].downloadItems
+        val download = getItem(holder.bindingAdapterPosition).download
+        val items = getItem(holder.bindingAdapterPosition).downloadItems
 
         holder.binding.apply {
             fileSize.isVisible = true
@@ -96,7 +109,7 @@ class DownloadsAdapter(
             }
 
             progressBar.setOnClickListener {
-                val isDownloading = toggleDownload(downloads[position])
+                val isDownloading = toggleDownload(getItem(holder.bindingAdapterPosition))
 
                 resumePauseBtn.setImageResource(
                     if (isDownloading) {
@@ -113,7 +126,11 @@ class DownloadsAdapter(
                     intent.putExtra(IntentData.videoId, download.videoId)
                     root.context.startActivity(intent)
                 } else {
-                    BackgroundHelper.playOnBackgroundOffline(root.context, download.videoId, downloadTab)
+                    BackgroundHelper.playOnBackgroundOffline(
+                        root.context,
+                        download.videoId,
+                        downloadTab
+                    )
                     NavigationHelper.openAudioPlayerFragment(root.context, offlinePlayer = true)
                 }
             }
@@ -152,11 +169,9 @@ class DownloadsAdapter(
             .show()
     }
 
-    fun itemAt(index: Int) = downloads[index]
-
     fun deleteDownload(position: Int) {
-        val download = downloads[position].download
-        val items = downloads[position].downloadItems
+        val download = getItem(position).download
+        val items = getItem(position).downloadItems
 
         items.forEach {
             it.path.deleteIfExists()
@@ -168,9 +183,9 @@ class DownloadsAdapter(
         runBlocking(Dispatchers.IO) {
             DatabaseHolder.Database.downloadDao().deleteDownload(download)
         }
-        downloads.removeAt(position)
-        notifyItemRemoved(position)
-        notifyItemRangeChanged(position, itemCount)
+        submitList(currentList.toMutableList().also {
+            it.removeAt(position)
+        })
     }
 
     fun restoreItem(position: Int) {
@@ -178,6 +193,4 @@ class DownloadsAdapter(
         notifyItemRemoved(position)
         notifyItemInserted(position)
     }
-
-    override fun getItemCount() = downloads.size
 }

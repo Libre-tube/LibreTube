@@ -8,9 +8,6 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL
 import androidx.recyclerview.widget.RecyclerView
 import com.github.libretube.R
 import com.github.libretube.api.PlaylistsHelper
@@ -41,9 +38,31 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private val subscriptionsViewModel: SubscriptionsViewModel by activityViewModels()
     private val homeViewModel: HomeViewModel by activityViewModels()
 
+    private val trendingAdapter = VideosAdapter(forceMode = LayoutMode.TRENDING_ROW)
+    private val feedAdapter = VideosAdapter(forceMode = LayoutMode.RELATED_COLUMN)
+    private val watchingAdapter = VideosAdapter(forceMode = LayoutMode.RELATED_COLUMN)
+    private val bookmarkAdapter = PlaylistBookmarkAdapter(PlaylistBookmarkAdapter.Companion.BookmarkMode.HOME)
+    private val playlistAdapter = PlaylistsAdapter(playlistType = PlaylistsHelper.getPrivatePlaylistType())
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentHomeBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
+
+        binding.trendingRV.adapter = trendingAdapter
+        binding.featuredRV.adapter = feedAdapter
+        binding.bookmarksRV.adapter = bookmarkAdapter
+        binding.playlistsRV.adapter = playlistAdapter
+        binding.playlistsRV.adapter?.registerAdapterDataObserver(object :
+            RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                super.onItemRangeRemoved(positionStart, itemCount)
+                if (itemCount == 0) {
+                    binding.playlistsRV.isGone = true
+                    binding.playlistsTV.isGone = true
+                }
+            }
+        })
+        binding.watchingRV.adapter = watchingAdapter
 
         with(homeViewModel) {
             trending.observe(viewLifecycleOwner, ::showTrending)
@@ -123,11 +142,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         if (streamItems == null) return
 
         makeVisible(binding.trendingRV, binding.trendingTV)
-        binding.trendingRV.layoutManager = GridLayoutManager(context, 2)
-        binding.trendingRV.adapter = VideosAdapter(
-            streamItems.toMutableList(),
-            forceMode = LayoutMode.TRENDING_ROW
-        )
+        trendingAdapter.submitList(streamItems)
     }
 
     private fun showFeed(streamItems: List<StreamItem>?) {
@@ -138,57 +153,29 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val feedVideos = streamItems
             .let { DatabaseHelper.filterByStatusAndWatchPosition(it, hideWatched) }
             .take(20)
-            .toMutableList()
 
-        with(binding.featuredRV) {
-            layoutManager = LinearLayoutManager(context, HORIZONTAL, false)
-            adapter = VideosAdapter(feedVideos, forceMode = LayoutMode.RELATED_COLUMN)
-        }
+        feedAdapter.submitList(feedVideos)
     }
 
     private fun showBookmarks(bookmarks: List<PlaylistBookmark>?) {
         if (bookmarks == null) return
 
         makeVisible(binding.bookmarksTV, binding.bookmarksRV)
-        with(binding.bookmarksRV) {
-            layoutManager = LinearLayoutManager(context, HORIZONTAL, false)
-            adapter = PlaylistBookmarkAdapter(
-                bookmarks.toMutableList(),
-                PlaylistBookmarkAdapter.Companion.BookmarkMode.HOME
-            )
-        }
+        bookmarkAdapter.submitList(bookmarks)
     }
 
     private fun showPlaylists(playlists: List<Playlists>?) {
         if (playlists == null) return
 
         makeVisible(binding.playlistsRV, binding.playlistsTV)
-        binding.playlistsRV.layoutManager = LinearLayoutManager(context)
-        binding.playlistsRV.adapter = PlaylistsAdapter(
-            playlists.toMutableList(),
-            playlistType = PlaylistsHelper.getPrivatePlaylistType()
-        )
-        binding.playlistsRV.adapter?.registerAdapterDataObserver(object :
-            RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                super.onItemRangeRemoved(positionStart, itemCount)
-                if (itemCount == 0) {
-                    binding.playlistsRV.isGone = true
-                    binding.playlistsTV.isGone = true
-                }
-            }
-        })
+        playlistAdapter.submitList(playlists)
     }
 
     private fun showContinueWatching(unwatchedVideos: List<StreamItem>?) {
         if (unwatchedVideos == null) return
 
         makeVisible(binding.watchingRV, binding.watchingTV)
-        binding.watchingRV.layoutManager = LinearLayoutManager(context, HORIZONTAL, false)
-        binding.watchingRV.adapter = VideosAdapter(
-            unwatchedVideos.toMutableList(),
-            forceMode = LayoutMode.RELATED_COLUMN
-        )
+        watchingAdapter.submitList(unwatchedVideos)
     }
 
     private fun updateLoading(isLoading: Boolean) {

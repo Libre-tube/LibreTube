@@ -50,6 +50,8 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
     private var isLoading = false
     private var recyclerViewState: Parcelable? = null
 
+    private val watchHistoryAdapter = WatchHistoryAdapter()
+
     private var selectedStatusFilter = PreferenceHelper.getInt(
         PreferenceKeys.SELECTED_HISTORY_STATUS_FILTER,
         0
@@ -79,6 +81,31 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
         commonPlayerViewModel.isMiniPlayerVisible.observe(viewLifecycleOwner) {
             _binding?.watchHistoryRecView?.updatePadding(bottom = if (it) 64f.dpToPx() else 0)
         }
+
+        binding.watchHistoryRecView.setOnDismissListener { position ->
+            watchHistoryAdapter.removeFromWatchHistory(position)
+        }
+
+        // observe changes to indicate if the history is empty
+        watchHistoryAdapter.registerAdapterDataObserver(object :
+            RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                if (watchHistoryAdapter.itemCount == 0) {
+                    binding.historyContainer.isGone = true
+                    binding.historyEmpty.isVisible = true
+                }
+            }
+        })
+
+        binding.watchHistoryRecView.adapter = watchHistoryAdapter
+
+        // manually restore the recyclerview state due to https://github.com/material-components/material-components-android/issues/3473
+        binding.watchHistoryRecView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                recyclerViewState = binding.watchHistoryRecView.layoutManager?.onSaveInstanceState()
+            }
+        })
 
         lifecycleScope.launch {
             val history = withContext(Dispatchers.IO) {
@@ -139,14 +166,6 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
                 }.show(childFragmentManager)
             }
 
-            // manually restore the recyclerview state due to https://github.com/material-components/material-components-android/issues/3473
-            binding.watchHistoryRecView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                    super.onScrollStateChanged(recyclerView, newState)
-                    recyclerViewState = binding.watchHistoryRecView.layoutManager?.onSaveInstanceState()
-                }
-            })
-
             showWatchHistory(history)
         }
 
@@ -157,7 +176,6 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
 
     private fun showWatchHistory(history: List<WatchHistoryItem>) {
         val watchHistory = history.filterByStatusAndWatchPosition()
-        val watchHistoryAdapter = WatchHistoryAdapter(watchHistory.toMutableList())
 
         binding.playAll.setOnClickListener {
             PlayingQueue.resetToDefaults()
@@ -170,25 +188,9 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watc
                 keepQueue = true
             )
         }
-
-        binding.watchHistoryRecView.adapter = watchHistoryAdapter
+        watchHistoryAdapter.submitList(history)
         binding.historyEmpty.isGone = true
         binding.historyContainer.isVisible = true
-
-        binding.watchHistoryRecView.setOnDismissListener { position ->
-            watchHistoryAdapter.removeFromWatchHistory(position)
-        }
-
-        // observe changes to indicate if the history is empty
-        watchHistoryAdapter.registerAdapterDataObserver(object :
-            RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                if (watchHistoryAdapter.itemCount == 0) {
-                    binding.historyContainer.isGone = true
-                    binding.historyEmpty.isVisible = true
-                }
-            }
-        })
 
         // add a listener for scroll end, delay needed to prevent loading new ones the first time
         handler.postDelayed(200) {

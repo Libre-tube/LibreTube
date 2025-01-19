@@ -30,14 +30,17 @@ class TrendsFragment : DynamicLayoutManagerFragment(R.layout.fragment_trends) {
         _binding = FragmentTrendsBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
 
+        val adapter = VideosAdapter()
+        binding.recview.adapter = adapter
+        binding.recview.layoutManager?.onRestoreInstanceState(viewModel.recyclerViewState)
+
         viewModel.trendingVideos.observe(viewLifecycleOwner) { videos ->
             if (videos == null) return@observe
 
-            binding.recview.adapter = VideosAdapter(videos.toMutableList())
-            binding.recview.layoutManager?.onRestoreInstanceState(viewModel.recyclerViewState)
-
             binding.homeRefresh.isRefreshing = false
             binding.progressBar.isGone = true
+
+            adapter.submitList(videos)
 
             if (videos.isEmpty()) {
                 Snackbar.make(binding.root, R.string.change_region, Snackbar.LENGTH_LONG)

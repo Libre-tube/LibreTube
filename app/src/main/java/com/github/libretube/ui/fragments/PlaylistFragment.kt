@@ -325,6 +325,7 @@ class PlaylistFragment : DynamicLayoutManagerFragment(R.layout.fragment_playlist
             playlistId,
             playlistType
         )
+        // TODO make sure the adapter is set once in onViewCreated
         binding.playlistRecView.adapter = playlistAdapter
 
         // listen for playlist items to become deleted

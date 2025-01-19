@@ -3,7 +3,8 @@ package com.github.libretube.ui.adapters
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.github.libretube.R
 import com.github.libretube.api.obj.Playlists
 import com.github.libretube.constants.IntentData
@@ -17,17 +18,17 @@ import com.github.libretube.ui.sheets.PlaylistOptionsBottomSheet.Companion.PLAYL
 import com.github.libretube.ui.viewholders.PlaylistsViewHolder
 
 class PlaylistsAdapter(
-    private val playlists: MutableList<Playlists>,
     private val playlistType: PlaylistType
-) : RecyclerView.Adapter<PlaylistsViewHolder>() {
-
-    override fun getItemCount() = playlists.size
-
-    fun updateItems(newItems: List<Playlists>) {
-        val oldSize = playlists.size
-        playlists.addAll(newItems)
-        notifyItemRangeInserted(oldSize, playlists.size)
+) : ListAdapter<Playlists, PlaylistsViewHolder>(object : DiffUtil.ItemCallback<Playlists>() {
+    override fun areItemsTheSame(oldItem: Playlists, newItem: Playlists): Boolean {
+        return oldItem.id == newItem.id
     }
+
+    override fun areContentsTheSame(oldItem: Playlists, newItem: Playlists): Boolean {
+        return oldItem == newItem
+    }
+
+}) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PlaylistsViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)
@@ -36,7 +37,7 @@ class PlaylistsAdapter(
     }
 
     override fun onBindViewHolder(holder: PlaylistsViewHolder, position: Int) {
-        val playlist = playlists[position]
+        val playlist = getItem(holder.bindingAdapterPosition)
         holder.binding.apply {
             // set imageview drawable as empty playlist if imageview empty
             if (playlist.thumbnail.orEmpty().split("/").size <= 4) {
@@ -80,7 +81,7 @@ class PlaylistsAdapter(
 
                     if (isPlaylistToBeDeleted) {
                         // try to refresh the playlists in the library on deletion success
-                        onDelete(position, root.context as BaseActivity)
+                        onDelete(position)
                     }
                 }
 
@@ -99,11 +100,10 @@ class PlaylistsAdapter(
         }
     }
 
-    private fun onDelete(position: Int, activity: BaseActivity) {
-        playlists.removeAt(position)
-        activity.runOnUiThread {
-            notifyItemRemoved(position)
-            notifyItemRangeChanged(position, itemCount)
+    private fun onDelete(position: Int) {
+        val newList = currentList.toMutableList().also {
+            it.removeAt(position)
         }
+        submitList(newList)
     }
 }

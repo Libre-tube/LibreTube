@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -35,10 +36,12 @@
                     android:id="@+id/featuredRV"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingHorizontal="10dp"
                     android:clipToPadding="false"
                     android:nestedScrollingEnabled="false"
-                    android:visibility="gone" />
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp"
+                    android:visibility="gone"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
                 <TextView
                     android:id="@+id/watchingTV"
@@ -49,10 +52,12 @@
                     android:id="@+id/watchingRV"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingHorizontal="10dp"
                     android:clipToPadding="false"
                     android:nestedScrollingEnabled="false"
-                    android:visibility="gone" />
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp"
+                    android:visibility="gone"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
                 <TextView
                     android:id="@+id/trendingTV"
@@ -70,7 +75,9 @@
                         android:layout_height="wrap_content"
                         android:layout_marginHorizontal="10dp"
                         android:nestedScrollingEnabled="false"
-                        android:visibility="gone" />
+                        android:visibility="gone"
+                        app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+                        app:spanCount="2" />
 
                 </RelativeLayout>
 
@@ -84,7 +91,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false"
-                    android:visibility="gone" />
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
                 <TextView
                     android:id="@+id/playlistsTV"
@@ -96,7 +105,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
             </LinearLayout>
 
@@ -134,8 +144,8 @@
             android:layout_height="50dp"
             android:layout_gravity="center"
             android:layout_marginTop="30dp"
-            android:textSize="12sp"
-            android:text="@string/retry"/>
+            android:text="@string/retry"
+            android:textSize="12sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/change_instance"
@@ -144,8 +154,8 @@
             android:layout_height="50dp"
             android:layout_gravity="center"
             android:layout_marginTop="5dp"
-            android:textSize="12sp"
-            android:text="@string/change_instance"/>
+            android:text="@string/change_instance"
+            android:textSize="12sp" />
     </LinearLayout>
 
 </FrameLayout>

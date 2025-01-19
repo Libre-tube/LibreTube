@@ -3,7 +3,8 @@ package com.github.libretube.ui.adapters
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.github.libretube.api.obj.Subscription
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.ChannelSubscriptionRowBinding
@@ -15,12 +16,20 @@ import com.github.libretube.ui.extensions.setupSubscriptionButton
 import com.github.libretube.ui.sheets.ChannelOptionsBottomSheet
 import com.github.libretube.ui.viewholders.SubscriptionChannelViewHolder
 
-class SubscriptionChannelAdapter(
-    private val subscriptions: MutableList<Subscription>
-) : RecyclerView.Adapter<SubscriptionChannelViewHolder>() {
+class SubscriptionChannelAdapter : ListAdapter<Subscription, SubscriptionChannelViewHolder>(object :
+    DiffUtil.ItemCallback<Subscription>() {
+    override fun areItemsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
+        return oldItem == newItem
+    }
+
+    override fun areContentsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
+        return oldItem == newItem
+    }
+
+}) {
     private var visibleCount = 20
 
-    override fun getItemCount() = minOf(visibleCount, subscriptions.size)
+    override fun getItemCount() = minOf(visibleCount, currentList.size)
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -33,13 +42,13 @@ class SubscriptionChannelAdapter(
 
     fun updateItems() {
         val oldSize = visibleCount
-        visibleCount += minOf(10, subscriptions.size - oldSize)
+        visibleCount += minOf(10, currentList.size - oldSize)
         if (visibleCount == oldSize) return
         notifyItemRangeInserted(oldSize, visibleCount)
     }
 
     override fun onBindViewHolder(holder: SubscriptionChannelViewHolder, position: Int) {
-        val subscription = subscriptions[position]
+        val subscription = getItem(holder.bindingAdapterPosition)
 
         holder.binding.apply {
             subscriptionChannelName.text = subscription.name

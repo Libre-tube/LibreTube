@@ -236,9 +236,10 @@ class ChannelFragment : DynamicLayoutManagerFragment(R.layout.fragment_channel) 
         }.attach()
 
         channelAdapter = VideosAdapter(
-            response.relatedStreams.toMutableList(),
             forceMode = VideosAdapter.Companion.LayoutMode.CHANNEL_ROW
-        )
+        ).also {
+            it.submitList(response.relatedStreams)
+        }
         tabList.clear()
 
         val tabs = listOf(ChannelTab(VIDEOS_TAB_KEY, "")) + response.tabs

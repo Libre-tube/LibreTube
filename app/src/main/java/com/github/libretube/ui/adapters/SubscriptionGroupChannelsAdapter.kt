@@ -2,7 +2,8 @@ package com.github.libretube.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.github.libretube.api.obj.Subscription
 import com.github.libretube.databinding.SubscriptionGroupChannelRowBinding
 import com.github.libretube.db.obj.SubscriptionGroup
@@ -12,10 +13,18 @@ import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.ui.viewholders.SubscriptionGroupChannelRowViewHolder
 
 class SubscriptionGroupChannelsAdapter(
-    private val channels: List<Subscription>,
     private val group: SubscriptionGroup,
     private val onGroupChanged: (SubscriptionGroup) -> Unit
-) : RecyclerView.Adapter<SubscriptionGroupChannelRowViewHolder>() {
+) : ListAdapter<Subscription, SubscriptionGroupChannelRowViewHolder>(object: DiffUtil.ItemCallback<Subscription>() {
+    override fun areItemsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
+        return oldItem == newItem
+    }
+
+    override fun areContentsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
+        return oldItem == newItem
+    }
+
+}) {
     override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int
@@ -25,10 +34,8 @@ class SubscriptionGroupChannelsAdapter(
         return SubscriptionGroupChannelRowViewHolder(binding)
     }
 
-    override fun getItemCount() = channels.size
-
     override fun onBindViewHolder(holder: SubscriptionGroupChannelRowViewHolder, position: Int) {
-        val channel = channels[position]
+        val channel = getItem(holder.bindingAdapterPosition)
         holder.binding.apply {
             root.setOnClickListener {
                 NavigationHelper.navigateChannel(root.context, channel.url)

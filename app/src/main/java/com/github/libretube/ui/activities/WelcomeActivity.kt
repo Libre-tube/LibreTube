@@ -47,13 +47,16 @@ class WelcomeActivity : BaseActivity() {
         val binding = ActivityWelcomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        binding.instancesRecycler.layoutManager = LinearLayoutManager(this@WelcomeActivity)
+        val adapter = InstancesAdapter(viewModel.selectedInstanceIndex.value) { index ->
+            viewModel.selectedInstanceIndex.value = index
+            binding.okay.alpha = 1f
+        }
+        binding.instancesRecycler.adapter = adapter
+
         // ALl the binding values are optional due to two different possible layouts (normal, landscape)
         viewModel.instances.observe(this) { instances ->
-            binding.instancesRecycler.layoutManager = LinearLayoutManager(this@WelcomeActivity)
-            binding.instancesRecycler.adapter = InstancesAdapter(ImmutableList.copyOf(instances), viewModel.selectedInstanceIndex.value) { index ->
-                viewModel.selectedInstanceIndex.value = index
-                binding.okay.alpha = 1f
-            }
+            adapter.submitList(ImmutableList.copyOf(instances))
             binding.progress.isGone = true
         }
         viewModel.fetchInstances()

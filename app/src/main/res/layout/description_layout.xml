@@ -20,8 +20,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checkable="false"
-            android:visibility="gone"
-            android:text="Sponsor"/>
+            android:text="Sponsor"
+            android:visibility="gone" />
 
     </LinearLayout>
 
@@ -133,7 +133,9 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/tags_recycler"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
     </LinearLayout>
 

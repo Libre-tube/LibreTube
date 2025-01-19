@@ -7,9 +7,10 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.map
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.libretube.R
 import com.github.libretube.api.RetrofitInstance
 import com.github.libretube.constants.IntentData
@@ -34,6 +35,27 @@ class SearchSuggestionsFragment : Fragment(R.layout.fragment_search_suggestions)
     private val viewModel: SearchViewModel by activityViewModels()
     private val mainActivity get() = activity as MainActivity
 
+    private val historyAdapter = SearchHistoryAdapter(
+        onRootClickListener = { historyQuery ->
+            runCatching {
+                (activity as MainActivity?)?.searchView
+            }.getOrNull()?.setQuery(historyQuery, true)
+        },
+        onArrowClickListener = { historyQuery ->
+            runCatching {
+                (activity as MainActivity?)?.searchView
+            }.getOrNull()?.setQuery(historyQuery, false)
+        }
+    )
+    private val suggestionsAdapter = SearchSuggestionsAdapter(
+        onRootClickListener = { suggestion ->
+            (activity as MainActivity?)?.searchView?.setQuery(suggestion, true)
+        },
+        onArrowClickListener = { suggestion ->
+            (activity as MainActivity?)?.searchView?.setQuery(suggestion, false)
+        },
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewModel.searchQuery.value = arguments?.getString(IntentData.query)
@@ -43,9 +65,15 @@ class SearchSuggestionsFragment : Fragment(R.layout.fragment_search_suggestions)
         _binding = FragmentSearchSuggestionsBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
 
-        binding.suggestionsRecycler.layoutManager = LinearLayoutManager(requireContext()).apply {
-            reverseLayout = true
-            stackFromEnd = true
+        viewModel.searchQuery
+            .map { it.isNullOrEmpty() }
+            .distinctUntilChanged()
+            .observe(viewLifecycleOwner) { isQueryEmpty ->
+                if (isQueryEmpty) {
+                    binding.suggestionsRecycler.adapter = historyAdapter
+                } else if (PreferenceHelper.getBoolean(PreferenceKeys.SEARCH_SUGGESTIONS, true)) {
+                    binding.suggestionsRecycler.adapter = suggestionsAdapter
+                }
         }
 
         // waiting for the query to change
@@ -81,30 +109,19 @@ class SearchSuggestionsFragment : Fragment(R.layout.fragment_search_suggestions)
                 return@launch
             }
             // only load the suggestions if the input field didn't get cleared yet
-            val suggestionsAdapter = SearchSuggestionsAdapter(
-                response.reversed(),
-                (activity as MainActivity).searchView
-            )
-            if (isAdded && !viewModel.searchQuery.value.isNullOrEmpty()) {
-                binding.suggestionsRecycler.adapter = suggestionsAdapter
+            if (!viewModel.searchQuery.value.isNullOrEmpty()) {
+                suggestionsAdapter.submitList(response.reversed())
             }
         }
     }
 
     private fun showHistory() {
-        val searchView = runCatching {
-            (activity as MainActivity).searchView
-        }.getOrNull()
-
         lifecycleScope.launch {
             val historyList = withContext(Dispatchers.IO) {
                 Database.searchHistoryDao().getAll().map { it.query }
             }
-            if (historyList.isNotEmpty() && searchView != null) {
-                binding.suggestionsRecycler.adapter = SearchHistoryAdapter(
-                    historyList,
-                    searchView
-                )
+            if (historyList.isNotEmpty()) {
+                historyAdapter.submitList(historyList)
             } else {
                 binding.suggestionsRecycler.isGone = true
                 binding.historyEmpty.isVisible = true

@@ -3,7 +3,6 @@ package com.github.libretube.ui.sheets
 import android.os.Bundle
 import android.view.View
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.libretube.R
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.DialogAddChannelToGroupBinding
@@ -16,6 +15,10 @@ import kotlinx.coroutines.withContext
 class AddChannelToGroupSheet : ExpandedBottomSheet(R.layout.dialog_add_channel_to_group) {
     private lateinit var channelId: String
 
+    private val addToGroupAdapter by lazy(LazyThreadSafetyMode.NONE) {
+        AddChannelToGroupAdapter(channelId)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -26,7 +29,8 @@ class AddChannelToGroupSheet : ExpandedBottomSheet(R.layout.dialog_add_channel_t
         super.onViewCreated(view, savedInstanceState)
         val binding = DialogAddChannelToGroupBinding.bind(view)
 
-        binding.groupsRV.layoutManager = LinearLayoutManager(context)
+        binding.groupsRV.adapter = addToGroupAdapter
+
         binding.cancel.setOnClickListener {
             requireDialog().dismiss()
         }
@@ -36,7 +40,7 @@ class AddChannelToGroupSheet : ExpandedBottomSheet(R.layout.dialog_add_channel_t
             val subscriptionGroups = subGroupsDao.getAll().sortedBy { it.index }.toMutableList()
 
             withContext(Dispatchers.Main) {
-                binding.groupsRV.adapter = AddChannelToGroupAdapter(subscriptionGroups, channelId)
+                addToGroupAdapter.submitList(subscriptionGroups)
 
                 binding.okay.setOnClickListener {
                     requireDialog().hide()

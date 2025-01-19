@@ -187,8 +187,10 @@ class InstanceSettings : BasePreferenceFragment() {
         binding.optionsRecycler.layoutManager = LinearLayoutManager(context)
 
         val instances = ImmutableList.copyOf(this.instances)
-        binding.optionsRecycler.adapter = InstancesAdapter(instances, selectedIndex) {
+        binding.optionsRecycler.adapter = InstancesAdapter(selectedIndex) {
             selectedInstance = instances[it].apiUrl
+        }.also {
+            it.submitList(instances)
         }
 
         MaterialAlertDialogBuilder(requireContext())

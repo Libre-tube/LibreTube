@@ -64,10 +64,9 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
     private var isCurrentTabSubChannels = false
     private var isAppBarFullyExpanded = true
 
-    private var feedAdapter: VideosAdapter? = null
+    private var feedAdapter = VideosAdapter()
     private val sortedFeed: MutableList<StreamItem> = mutableListOf()
 
-    private var channelsAdapter: SubscriptionChannelAdapter? = null
     private var selectedSortOrder = PreferenceHelper.getInt(PreferenceKeys.FEED_SORT_ORDER, 0)
         set(value) {
             PreferenceHelper.putInt(PreferenceKeys.FEED_SORT_ORDER, value)
@@ -84,6 +83,9 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
     private var subChannelsRecyclerViewState: Parcelable? = null
     private var subFeedRecyclerViewState: Parcelable? = null
 
+    private val legacySubscriptionsAdapter = LegacySubscriptionAdapter()
+    private val channelsAdapter = SubscriptionChannelAdapter()
+
     override fun setLayoutManagers(gridItems: Int) {
         _binding?.subFeed?.layoutManager = VideosAdapter.getLayout(requireContext(), gridItems)
     }
@@ -93,6 +95,27 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
         super.onViewCreated(view, savedInstanceState)
 
         setupSortAndFilter()
+
+        binding.subFeed.adapter = feedAdapter
+
+        val legacySubscriptions = PreferenceHelper.getBoolean(
+            PreferenceKeys.LEGACY_SUBSCRIPTIONS,
+            false
+        )
+
+        if (legacySubscriptions) {
+            binding.subChannels.layoutManager = GridLayoutManager(
+                context,
+                PreferenceHelper.getString(
+                    PreferenceKeys.LEGACY_SUBSCRIPTIONS_COLUMNS,
+                    "4"
+                ).toInt()
+            )
+            binding.subChannels.adapter = legacySubscriptionsAdapter
+        } else {
+            binding.subChannels.layoutManager = LinearLayoutManager(context)
+            binding.subChannels.adapter = channelsAdapter
+        }
 
         // Check if the AppBarLayout is fully expanded
         binding.subscriptionsAppBar.addOnOffsetChangedListener { _, verticalOffset ->
@@ -145,7 +168,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
 
             if (viewModel.subscriptions.value != null && isCurrentTabSubChannels) {
                 binding.subRefresh.isRefreshing = true
-                channelsAdapter?.updateItems()
+                channelsAdapter.updateItems()
                 binding.subRefresh.isRefreshing = false
             }
         }
@@ -203,8 +226,6 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
 
     private fun loadNextFeedItems() {
         val binding = _binding ?: return
-
-        val feedAdapter = feedAdapter ?: return
 
         val hasMore = sortedFeed.size > feedAdapter.itemCount
         if (viewModel.videoFeed.value != null && !isCurrentTabSubChannels && !binding.subRefresh.isRefreshing && hasMore) {
@@ -373,11 +394,8 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
         val notLoaded = viewModel.videoFeed.value.isNullOrEmpty()
         binding.subFeed.isGone = notLoaded
         binding.emptyFeed.isVisible = notLoaded
-
-        feedAdapter = VideosAdapter(mutableListOf())
         loadNextFeedItems()
 
-        binding.subFeed.adapter = feedAdapter
         binding.toggleSubs.text = getString(R.string.subscriptions)
 
         PreferenceHelper.updateLastFeedWatchedTime()
@@ -393,18 +411,9 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
         )
 
         if (legacySubscriptions) {
-            binding.subChannels.layoutManager = GridLayoutManager(
-                context,
-                PreferenceHelper.getString(
-                    PreferenceKeys.LEGACY_SUBSCRIPTIONS_COLUMNS,
-                    "4"
-                ).toInt()
-            )
-            binding.subChannels.adapter = LegacySubscriptionAdapter(subscriptions)
+            legacySubscriptionsAdapter.submitList(subscriptions)
         } else {
-            binding.subChannels.layoutManager = LinearLayoutManager(context)
-            channelsAdapter = SubscriptionChannelAdapter(subscriptions.toMutableList())
-            binding.subChannels.adapter = channelsAdapter
+            channelsAdapter.submitList(subscriptions)
         }
 
         binding.subRefresh.isRefreshing = false
@@ -420,7 +429,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_sub
     }
 
     fun removeItem(videoId: String) {
-        feedAdapter?.removeItemById(videoId)
+        feedAdapter.removeItemById(videoId)
         sortedFeed.removeAll { it.url?.toID() != videoId }
     }
 

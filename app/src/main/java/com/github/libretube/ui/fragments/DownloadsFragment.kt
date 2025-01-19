@@ -146,6 +146,32 @@ class DownloadsFragmentPage : DynamicLayoutManagerFragment(R.layout.fragment_dow
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentDownloadContentBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
+        adapter = DownloadsAdapter(requireContext(), downloadTab) {
+            var isDownloading = false
+            val ids = it.downloadItems
+                .filter { item -> item.path.fileSize() < item.downloadSize }
+                .map { item -> item.id }
+
+            if (!serviceConnection.isBound) {
+                DownloadHelper.startDownloadService(requireContext())
+                bindDownloadService(ids.toIntArray())
+                return@DownloadsAdapter true
+            }
+
+            binder?.getService()?.let { service ->
+                isDownloading = ids.any { id -> service.isDownloading(id) }
+
+                ids.forEach { id ->
+                    if (isDownloading) {
+                        service.pause(id)
+                    } else {
+                        service.resume(id)
+                    }
+                }
+            }
+            return@DownloadsAdapter isDownloading.not()
+        }
+        binding.downloadsRecView.adapter = adapter
 
         var selectedSortType =
             PreferenceHelper.getInt(PreferenceKeys.SELECTED_DOWNLOAD_SORT_TYPE, 0)
@@ -156,7 +182,6 @@ class DownloadsFragmentPage : DynamicLayoutManagerFragment(R.layout.fragment_dow
                 binding.sortType.text = filterOptions[index]
                 if (::adapter.isInitialized) {
                     sortDownloadList(index, selectedSortType)
-                    adapter.notifyDataSetChanged()
                 }
                 selectedSortType = index
                 PreferenceHelper.putInt(
@@ -178,32 +203,6 @@ class DownloadsFragmentPage : DynamicLayoutManagerFragment(R.layout.fragment_dow
 
             sortDownloadList(selectedSortType)
 
-            adapter = DownloadsAdapter(requireContext(), downloadTab, downloads) {
-                var isDownloading = false
-                val ids = it.downloadItems
-                    .filter { item -> item.path.fileSize() < item.downloadSize }
-                    .map { item -> item.id }
-
-                if (!serviceConnection.isBound) {
-                    DownloadHelper.startDownloadService(requireContext())
-                    bindDownloadService(ids.toIntArray())
-                    return@DownloadsAdapter true
-                }
-
-                binder?.getService()?.let { service ->
-                    isDownloading = ids.any { id -> service.isDownloading(id) }
-
-                    ids.forEach { id ->
-                        if (isDownloading) {
-                            service.pause(id)
-                        } else {
-                            service.resume(id)
-                        }
-                    }
-                }
-                return@DownloadsAdapter isDownloading.not()
-            }
-            binding.downloadsRecView.adapter = adapter
 
             binding.downloadsRecView.setOnDismissListener { position ->
                 adapter.showDeleteDialog(requireContext(), position)
@@ -251,10 +250,10 @@ class DownloadsFragmentPage : DynamicLayoutManagerFragment(R.layout.fragment_dow
 
     private fun sortDownloadList(sortType: Int, previousSortType: Int? = null) {
         if (previousSortType == null && sortType == 1) {
-            downloads.reverse()
+            adapter.submitList(downloads.reversed())
         }
         if (previousSortType != null && sortType != previousSortType) {
-            downloads.reverse()
+            adapter.submitList(downloads.reversed())
         }
     }
 
@@ -269,7 +268,7 @@ class DownloadsFragmentPage : DynamicLayoutManagerFragment(R.layout.fragment_dow
             .setPositiveButton(R.string.okay) { _, _ ->
                 lifecycleScope.launch {
                     for (downloadIndex in downloads.size - 1 downTo 0) {
-                        val download = adapter.itemAt(downloadIndex).download
+                        val download = adapter.currentList[downloadIndex].download
                         if (!onlyDeleteWatchedVideos || DatabaseHelper.isVideoWatched(download.videoId, download.duration ?: 0)) {
                             adapter.deleteDownload(downloadIndex)
                         }

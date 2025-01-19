@@ -8,8 +8,9 @@ import androidx.core.os.bundleOf
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView.LayoutManager
 import com.github.libretube.api.obj.StreamItem
 import com.github.libretube.constants.IntentData
@@ -36,29 +37,38 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class VideosAdapter(
-    private val streamItems: MutableList<StreamItem>,
     private val forceMode: LayoutMode = LayoutMode.RESPECT_PREF
-) : RecyclerView.Adapter<VideosViewHolder>() {
-    override fun getItemCount() = streamItems.size
+) : ListAdapter<StreamItem, VideosViewHolder>(object: DiffUtil.ItemCallback<StreamItem>() {
+    override fun areItemsTheSame(oldItem: StreamItem, newItem: StreamItem): Boolean {
+        return oldItem == newItem
+    }
 
+    override fun areContentsTheSame(oldItem: StreamItem, newItem: StreamItem): Boolean {
+        return oldItem == newItem
+    }
+
+}) {
     override fun getItemViewType(position: Int): Int {
-        return if (streamItems[position].type == CAUGHT_UP_STREAM_TYPE) CAUGHT_UP_TYPE else NORMAL_TYPE
+        return if (currentList[position].type == CAUGHT_UP_STREAM_TYPE) CAUGHT_UP_TYPE else NORMAL_TYPE
     }
 
     fun insertItems(newItems: List<StreamItem>) {
-        val feedSize = streamItems.size
-        streamItems.addAll(newItems)
-        notifyItemRangeInserted(feedSize, newItems.size)
+        val updatedList = currentList.toMutableList().also {
+            it.addAll(newItems)
+        }
+
+        submitList(updatedList)
     }
 
     fun removeItemById(videoId: String) {
-        val index = streamItems.indexOfFirst {
+        val index = currentList.indexOfFirst {
             it.url?.toID() == videoId
         }.takeIf { it > 0 } ?: return
-        streamItems.removeAt(index)
+        val updatedList = currentList.toMutableList().also {
+            it.removeAt(index)
+        }
 
-        notifyItemRemoved(index)
-        notifyItemRangeChanged(index, itemCount)
+        submitList(updatedList)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VideosViewHolder {
@@ -90,7 +100,7 @@ class VideosAdapter(
 
     @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: VideosViewHolder, position: Int) {
-        val video = streamItems[position]
+        val video = getItem(holder.bindingAdapterPosition)
         val videoId = video.url.orEmpty().toID()
 
         val context = (

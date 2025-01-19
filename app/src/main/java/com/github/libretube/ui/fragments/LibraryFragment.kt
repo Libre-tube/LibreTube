@@ -45,6 +45,9 @@ class LibraryFragment : DynamicLayoutManagerFragment(R.layout.fragment_library) 
 
     private val commonPlayerViewModel: CommonPlayerViewModel by activityViewModels()
 
+    private val playlistsAdapter = PlaylistsAdapter(PlaylistsHelper.getPrivatePlaylistType())
+    private val playlistBookmarkAdapter = PlaylistBookmarkAdapter()
+
     override fun setLayoutManagers(gridItems: Int) {
         _binding?.bookmarksRecView?.layoutManager = GridLayoutManager(context, gridItems.ceilHalf())
         _binding?.playlistRecView?.layoutManager = GridLayoutManager(context, gridItems.ceilHalf())
@@ -53,6 +56,18 @@ class LibraryFragment : DynamicLayoutManagerFragment(R.layout.fragment_library) 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentLibraryBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
+
+        binding.bookmarksRecView.adapter = playlistBookmarkAdapter
+        // listen for playlists to become deleted
+        playlistsAdapter.registerAdapterDataObserver(object :
+            RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                _binding?.nothingHere?.isVisible = playlistsAdapter.itemCount == 0
+                _binding?.sortTV?.isVisible = playlistsAdapter.itemCount > 0
+                super.onItemRangeRemoved(positionStart, itemCount)
+            }
+        })
+        binding.playlistRecView.adapter = playlistsAdapter
 
         // listen for the mini player state changing
         commonPlayerViewModel.isMiniPlayerVisible.observe(viewLifecycleOwner) {
@@ -142,7 +157,7 @@ class LibraryFragment : DynamicLayoutManagerFragment(R.layout.fragment_library) 
 
             binding.bookmarksCV.isVisible = bookmarks.isNotEmpty()
             if (bookmarks.isNotEmpty()) {
-                binding.bookmarksRecView.adapter = PlaylistBookmarkAdapter(bookmarks)
+                playlistBookmarkAdapter.submitList(bookmarks)
             }
         }
     }
@@ -184,23 +199,8 @@ class LibraryFragment : DynamicLayoutManagerFragment(R.layout.fragment_library) 
     private fun showPlaylists(playlists: List<Playlists>) {
         val binding = _binding ?: return
 
-        val playlistsAdapter = PlaylistsAdapter(
-            playlists.toMutableList(),
-            PlaylistsHelper.getPrivatePlaylistType()
-        )
-
-        // listen for playlists to become deleted
-        playlistsAdapter.registerAdapterDataObserver(object :
-            RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                _binding?.nothingHere?.isVisible = playlistsAdapter.itemCount == 0
-                _binding?.sortTV?.isVisible = playlistsAdapter.itemCount > 0
-                super.onItemRangeRemoved(positionStart, itemCount)
-            }
-        })
-
         binding.nothingHere.isGone = true
         binding.sortTV.isVisible = true
-        binding.playlistRecView.adapter = playlistsAdapter
+        playlistsAdapter.submitList(playlists)
     }
 }

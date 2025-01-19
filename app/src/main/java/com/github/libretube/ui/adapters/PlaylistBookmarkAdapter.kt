@@ -5,7 +5,8 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.github.libretube.R
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.PlaylistBookmarkRowBinding
@@ -23,9 +24,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class PlaylistBookmarkAdapter(
-    private val bookmarks: List<PlaylistBookmark>,
     private val bookmarkMode: BookmarkMode = BookmarkMode.FRAGMENT
-) : RecyclerView.Adapter<PlaylistBookmarkViewHolder>() {
+) : ListAdapter<PlaylistBookmark, PlaylistBookmarkViewHolder>(object: DiffUtil.ItemCallback<PlaylistBookmark>() {
+    override fun areItemsTheSame(oldItem: PlaylistBookmark, newItem: PlaylistBookmark): Boolean {
+        return oldItem.playlistId == newItem.playlistId
+    }
+
+    override fun areContentsTheSame(oldItem: PlaylistBookmark, newItem: PlaylistBookmark): Boolean {
+        return oldItem == newItem
+    }
+
+}) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PlaylistBookmarkViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)
         return when (bookmarkMode) {
@@ -38,8 +47,6 @@ class PlaylistBookmarkAdapter(
             )
         }
     }
-
-    override fun getItemCount() = bookmarks.size
 
     private fun showPlaylistOptions(context: Context, bookmark: PlaylistBookmark) {
         val sheet = PlaylistOptionsBottomSheet()
@@ -54,7 +61,7 @@ class PlaylistBookmarkAdapter(
     }
 
     override fun onBindViewHolder(holder: PlaylistBookmarkViewHolder, position: Int) {
-        val bookmark = bookmarks[position]
+        val bookmark = getItem(holder.bindingAdapterPosition)
         holder.playlistBookmarkBinding?.apply {
             ImageHelper.loadImage(bookmark.thumbnailUrl, thumbnail)
             playlistName.text = bookmark.playlistName

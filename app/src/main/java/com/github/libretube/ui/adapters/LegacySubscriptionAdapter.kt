@@ -3,7 +3,9 @@ package com.github.libretube.ui.adapters
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import com.github.libretube.api.obj.Subscription
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.LegacySubscriptionChannelBinding
 import com.github.libretube.extensions.toID
@@ -13,9 +15,17 @@ import com.github.libretube.ui.base.BaseActivity
 import com.github.libretube.ui.sheets.ChannelOptionsBottomSheet
 import com.github.libretube.ui.viewholders.LegacySubscriptionViewHolder
 
-class LegacySubscriptionAdapter(
-    private val subscriptions: List<com.github.libretube.api.obj.Subscription>
-) : RecyclerView.Adapter<LegacySubscriptionViewHolder>() {
+class LegacySubscriptionAdapter : ListAdapter<Subscription, LegacySubscriptionViewHolder>(object :
+    DiffUtil.ItemCallback<Subscription>() {
+    override fun areItemsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
+        return oldItem == newItem
+    }
+
+    override fun areContentsTheSame(oldItem: Subscription, newItem: Subscription): Boolean {
+        return oldItem == newItem
+    }
+
+}) {
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -27,7 +37,7 @@ class LegacySubscriptionAdapter(
     }
 
     override fun onBindViewHolder(holder: LegacySubscriptionViewHolder, position: Int) {
-        val subscription = subscriptions[position]
+        val subscription = getItem(holder.bindingAdapterPosition)
         holder.binding.apply {
             channelName.text = subscription.name
             ImageHelper.loadImage(
@@ -51,6 +61,4 @@ class LegacySubscriptionAdapter(
             }
         }
     }
-
-    override fun getItemCount() = subscriptions.size
 }
